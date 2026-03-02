@@ -5,6 +5,7 @@ PyTorch backend implementation for TTS and STT.
 from typing import Optional, List, Tuple
 import asyncio
 import torch
+import gc
 import numpy as np
 from pathlib import Path
 
@@ -233,6 +234,7 @@ class PyTorchTTSBackend:
             del self.model
             self.model = None
             self._current_model_size = None
+            gc.collect()
             
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()

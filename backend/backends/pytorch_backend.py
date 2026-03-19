@@ -380,6 +380,33 @@ class PyTorchTTSBackend:
         # Run blocking inference in thread pool to avoid blocking event loop
         audio, sample_rate = await asyncio.to_thread(_generate_sync)
 
+        # CRITICAL: MEMORY MANAGEMENT FOR CPU-ONLY FLOAT32
+        # float32 uses 4x more memory than bfloat16. On 4GB Haswell CPU with 7.6GB RAM,
+        # the model consumes ~7GB during generation. Without aggressive cleanup,
+        # subsequent generations will trigger OOM killer.
+        #
+        # Solution: Immediate unload + aggressive memory cleanup after generation
+
+        # 1. Unload model immediately to free ~7GB of memory
+        self.unload_model()
+
+        # 2. Force Python garbage collection
+        gc.collect()
+
+        # 3. Force CUDA cache cleanup (if available)
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        # 4. Force malloc_trim(0) to return freed memory to OS
+        # This is critical on Linux systems with limited RAM
+        try:
+            import ctypes
+            libc = ctypes.CDLL("libc.so.6")
+            libc.malloc_trim(0)
+        except:
+            # malloc_trim not available on all systems
+            pass
+
         return audio, sample_rate
 
 

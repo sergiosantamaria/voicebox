@@ -184,18 +184,13 @@ class PyTorchTTSBackend:
                 # Don't pass device_map on CPU: accelerate's meta-tensor mechanism
                 # causes "Cannot copy out of meta tensor" when moving to CPU.
                 # Instead load directly then call .to(device) if needed.
-                if self.device == "cpu":
-                    self.model = Qwen3TTSModel.from_pretrained(
-                        model_path,
-                        torch_dtype=torch.float32,
-                        low_cpu_mem_usage=False,
-                    )
-                else:
-                    self.model = Qwen3TTSModel.from_pretrained(
-                        model_path,
-                        device_map=self.device,
-                        torch_dtype=torch.bfloat16,
-                    )
+                # CPU-only: Always use float32 (bfloat16 incompatible with Haswell CPU)
+                # Qwen3-TTS default bfloat16 requires AVX-512 BF16 (not available on Haswell)
+                self.model = Qwen3TTSModel.from_pretrained(
+                    model_path,
+                    torch_dtype=torch.float32,
+                    low_cpu_mem_usage=False,
+                )
             finally:
                 # Exit the patch context
                 tracker_context.__exit__(None, None, None)

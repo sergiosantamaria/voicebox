@@ -192,13 +192,13 @@ class PyTorchTTSBackend:
                     low_cpu_mem_usage=False,
                 )
 
-                  # CRITICAL: Force model to float32 and CPU to prevent any bfloat16 conversion
-                  # This ensures the model stays in float32 even if internal operations try to convert
-                  self.model = self.model.to(torch.float32)
-                  self.model = self.model.to("cpu")
+                # CRITICAL: Force model to float32 and CPU to prevent any bfloat16 conversion
+                # This ensures the model stays in float32 even if internal operations try to convert
+                self.model = self.model.to(torch.float32)
+                self.model = self.model.to("cpu")
 
-                  # Additional safety: set model to eval mode to prevent any dtype changes
-                  self.model.eval()
+                # Additional safety: set model to eval mode to prevent any dtype changes
+                self.model.eval()
             finally:
                 # Exit the patch context
                 tracker_context.__exit__(None, None, None)

@@ -192,13 +192,22 @@ class PyTorchTTSBackend:
                     low_cpu_mem_usage=False,
                 )
 
-                # CRITICAL: Force model to float32 and CPU to prevent any bfloat16 conversion
-                # This ensures the model stays in float32 even if internal operations try to convert
-                self.model = self.model.to(torch.float32)
-                self.model = self.model.to("cpu")
+                # CRITICAL: Force float32 on ALL internal model components
+                # Qwen3TTSModel is a wrapper; access the internal model and force dtype
+                if hasattr(self.model, 'model'):
+                    internal_model = self.model.model
+                    # Force float32 on the talker component (main generation model)
+                    if hasattr(internal_model, 'talker'):
+                        for param in internal_model.talker.parameters():
+                            param.data = param.data.to(torch.float32)
+                    # Force float32 on speaker encoder if exists
+                    if hasattr(internal_model, 'speaker_encoder') and internal_model.speaker_encoder is not None:
+                        for param in internal_model.speaker_encoder.parameters():
+                            param.data = param.data.to(torch.float32)
 
-                # Additional safety: set model to eval mode to prevent any dtype changes
-                self.model.eval()
+                # Set model to CPU explicitly
+                if hasattr(self.model.model, 'to'):
+                    self.model.model.to("cpu")
             finally:
                 # Exit the patch context
                 tracker_context.__exit__(None, None, None)
